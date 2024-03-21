@@ -1,2 +1,60 @@
-## Week 3
+# Week 3
 --------------
+## Houdini console log Example
+- GDrive: PROJECTS_backupFiles folder created
+- GDrive: week3 folder created
+- GDrive: geo folder created
+- GDrive: box folder created
+- GDrive: v001 folder created
+- Pre-Render Script DONE
+- Upload Successfull. File: box_v001.0001.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0002.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0003.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0004.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0005.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0006.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0007.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0008.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0009.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: box_v001.0010.bgeo.sc
+- Post-Write Script DONE
+- Post-Render Script DONE
+
+-----------------------
+### Caching under the same folders in Google Drive
+- GDrive: week3 folder found
+- GDrive: PROJECTS_backupFiles folder found
+- GDrive: geo folder found
+- GDrive: tube folder created
+- GDrive: v001 folder created
+- Pre-Render Script DONE
+- Upload Successfull. File: tube_v001.0001.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0002.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0003.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0004.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0005.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0006.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0007.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0008.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0009.bgeo.sc
+- Post-Write Script DONE
+- Upload Successfull. File: tube_v001.0010.bgeo.sc
+- Post-Write Script DONE
+- Post-Render Script DONE

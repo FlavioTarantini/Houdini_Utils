@@ -1,0 +1,9 @@
+{
+    "DEFAULT":
+    {
+        "app-color": "#2C3333",
+        "secondary-color": "#395B64",
+        "additional-color": "#A5C9CA",
+        "light-color": "#E7F6F2"
+    }
+}

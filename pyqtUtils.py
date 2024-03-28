@@ -1,12 +1,18 @@
+import os
 import json
+import zipfile
+import pprint
 
 from PySide2 import QtWidgets, QtGui, QtCore
 
 with open("themes.json", "r") as th:
     COLOR_PALETTE = json.load(th)["DEFAULT"]
+_text_color = QtGui.QColor(COLOR_PALETTE["additional-color"])
+_text_color.setAlpha(125)
+DISABLED_TEXT_COLOR = _text_color.getRgb()
 
 class ElideLabel(QtWidgets.QLabel):
-    def __init__(self, text=None):
+    def __init__(self, text=" "):
         super().__init__(text)
 
         self.setWordWrap(False)  # Disable word wrapping
@@ -65,14 +71,8 @@ class CustomTreeView(QtWidgets.QTreeView):
         # Create the file system model
         self.model = QtWidgets.QFileSystemModel()
         self.model.setRootPath(self.folder_path)
-        # Set the filter to show only directories
-        self.model.setFilter(QtCore.QDir.AllDirs | QtCore.QDir.NoDotAndDotDot)
-
+        self.model.setFilter(QtCore.QDir.AllDirs | QtCore.QDir.NoDotAndDotDot)      # Set the filter to show only directories
         self.setModel(self.model)
-
-        palette = self.palette().color(QtGui.QPalette.Highlight).getRgb()
-        highlight_color = (palette[0], palette[1], palette[2], 50)
-        highlight_color_border = (palette[0]/3, palette[1]/3, palette[2]/3, 100)
 
         self.setStyleSheet(f"""
                                 QTreeView::item {{
@@ -91,6 +91,27 @@ class CustomTreeView(QtWidgets.QTreeView):
                                     background-color: {COLOR_PALETTE["secondary-color"]};
                                     margin: 2px;
                                     color: {COLOR_PALETTE["light-color"]};
+                                }}
+                                QScrollBar:vertical {{
+                                    background: rgba{DISABLED_TEXT_COLOR};
+                                    width: 8px;
+                                    border-radius: 10px;
+                                }}
+                                QScrollBar::handle:vertical {{
+                                    background: {COLOR_PALETTE["secondary-color"]};
+                                    min-height: 10px;
+                                    border-radius: 20px;
+                                    padding: 0px;
+                                }}
+                                QScrollBar::add-line:vertical {{
+                                    background: none;
+                                }}
+                                QScrollBar::sub-line:vertical {{
+                                    background: none;
+                                }}
+                                QScrollBar::add-page:vertical, 
+                                QScrollBar::sub-page:vertical {{
+                                    background: none;
                                 }}
 
                                 """)  # Set style
@@ -114,24 +135,10 @@ class CustomTreeView(QtWidgets.QTreeView):
         for i in range(1, self.model.columnCount()):
             self.setColumnHidden(i, True)
 
-        # Enable multi-selection
-        self.setSelectionMode(QtWidgets.QTreeView.ExtendedSelection)
-        
-        # Set the root index of the tree view to the root index of the model
-        self.setRootIndex(self.model.index(self.folder_path))
-
-        # Expand all items in tree
-        self.model.directoryLoaded.connect(self._fetchAndExpand)
-        self.setItemsExpandable(False)
+        self.setSelectionMode(QtWidgets.QTreeView.SingleSelection)        # Enable multi-selection
+        self.setRootIndex(self.model.index(self.folder_path))               # Set the root index of the tree view to the root index of the model
+        self.setItemsExpandable(True)
         self.setAcceptDrops(True)
-
-    def _fetchAndExpand(self, path):
-        index = self.model.index(path)
-        self.expand(index)
-        for i in range(self.model.rowCount(index)):
-            child = index.child(i, 0)
-            if self.model.isDir(child):
-                self.model.setRootPath(self.model.filePath(child))
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasText():
@@ -148,42 +155,178 @@ class CustomTreeView(QtWidgets.QTreeView):
 
     def dropEvent(self, event):
         if event.mimeData().hasText():
-            text = event.mimeData().text()
-            print("Dropped:", text)
+            data_sharing = json.loads(event.mimeData().text())
+            zippath = data_sharing["zippath"]
+            member = data_sharing["member"]
+            print(data_sharing)
+
+            modelindex = self.indexAt(event.pos())
+            if modelindex.isValid():
+                dest_path = self.model.filePath(self.indexAt(event.pos()))
+                self.extractZip(zippath, member, dest_path)
+            else:
+                dest_path = self.folder_path
+                self.extractZip(zippath, member, dest_path)
+
+            print("Dropped:", member)
         else:
             event.ignore()
 
-class DraggableTabBar(QtWidgets.QTabBar):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.setMovable(True)
-        self.drag_start_pos = None
-        self.drag_index = -1
-
-    def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            self.drag_start_pos = event.pos()
-            self.drag_index = self.tabAt(self.drag_start_pos)
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        if not (event.buttons() & QtCore.Qt.LeftButton):
-            return
-        if (event.pos() - self.drag_start_pos).manhattanLength() < QtWidgets.QApplication.startDragDistance():
-            return
-        drag = QtGui.QDrag(self)
-        mime_data = QtCore.QMimeData()
-        mime_data.setText("hello")  # Set the string value directly
-        drag.setMimeData(mime_data)
-        drag.exec_(QtCore.Qt.MoveAction)
-
-    
-    def dropEvent(self, event):
-        if event.mimeData().hasText():
-            text = event.mimeData().text()
-            if text == "close":
-                self.tabClosed.emit(self.drag_index)
+    def extractZip(self, zippath, member, dest):
+        with zipfile.ZipFile(zippath, "r") as zip:
+            if not member:
+                zip.extractall(dest)
             else:
-                print("Dropped:", text)
-                # Handle other dropped strings here
+                # TODO Implement extract zip of single members
+                # _member = member  + "/"
+                # zip.extractall(dest, members=[member])
+                pass
+
+            zip.close()
+                
+
+class zipTreeWidget(QtWidgets.QTreeWidget):
+    def __init__(self, parent, zippath=None) -> None:
+        super().__init__(parent)
+        self.zippath = zippath
+        self.setHeaderLabels(["Name", "type"])
+        self.setDragEnabled(True)
+        self.setDragDropMode(QtWidgets.QTreeWidget.DragOnly)
+
+        self.zip_name = os.path.basename(self.zippath)
+
+        self._zipObject = zipfile.ZipFile(self.zippath, "r")
+        # Open the zip file/s
+        with self.zipObject as zip:
+            # Get the list of files in the zip folder
+            file_list = zip.namelist()  ################ PROBLEM HERE PRINT
+
+            # Build directory structure
+            # Setting zip root
+            zip_structure = self.build_directory_structure(file_list)
+            zip_root = QtWidgets.QTreeWidgetItem([self.zip_name])
+            zip_root.setData(1, QtCore.Qt.UserRole, self.zippath)
+            zip_root.setForeground(0, QtGui.QBrush(_text_color))
+            fileInfo = QtCore.QFileInfo(self.zippath)                       # Gather OS zip Icon
+            iconProvider = QtWidgets.QFileIconProvider()
+            icon = iconProvider.icon(fileInfo)
+            icon = icon.pixmap(icon.actualSize(QtCore.QSize(36, 36)))       # Scale to proper size
+            zip_root.setIcon(0, icon)
+
+            # pprint.pprint(zip_structure)
+            self.populate_tree_widget(zip_structure, zip_root, self.zippath)
+            self.addTopLevelItem(zip_root)
+            self.sortItems(0, QtCore.Qt.AscendingOrder)
+            self.sortItems(1, QtCore.Qt.AscendingOrder)
+            self.setColumnHidden(1, True)
+            zip_root.setExpanded(True)
+            self.setAnimated(True)
+
+        self.setStyleSheet(f"""
+                                QTreeWidget::item {{
+                                    border-radius: 6px;
+                                    height: 30px;
+                                }}
+                                QTreeWidget {{
+                                    margin-top: 10px;
+                                }}
+
+                                QTreeWidget::item:selected {{
+                                    background-color: {COLOR_PALETTE["secondary-color"]};
+                                    margin: 2px;
+                                    color: {COLOR_PALETTE["light-color"]};
+                                }}
+
+                                QScrollBar:vertical {{
+                                    background: rgba{DISABLED_TEXT_COLOR};
+                                    width: 8px;
+                                    border-radius: 10px;
+                                }}
+                                QScrollBar::handle:vertical {{
+                                    background: {COLOR_PALETTE["secondary-color"]};
+                                    min-height: 10px;
+                                    border-radius: 20px;
+                                    padding: 0px;
+                                }}
+                                QScrollBar::add-line:vertical {{
+                                    background: none;
+                                }}
+                                QScrollBar::sub-line:vertical {{
+                                    background: none;
+                                }}
+                                QScrollBar::add-page:vertical, 
+                                QScrollBar::sub-page:vertical {{
+                                    background: none;
+                                }}
+
+                                """)
+
+        self.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.setHeaderHidden(True)  # Hide header
+        self.setIndentation(10)  # Set indentation
+        self.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.setSelectionMode(QtWidgets.QTreeView.ExtendedSelection)
+
+    @property
+    def zipObject(self):
+        return self._zipObject
+    
+    def populate_tree_widget(self, dict, parent_item, zippath):
+        if not dict:
+            return
+        for folder, child_dict in dict.items():
+            _path = "/".join(child_dict[1][1:] + [folder])
+            if not child_dict[0]:
+                item = QtWidgets.QTreeWidgetItem([folder, "b"])
+                item.setIcon(0, QtWidgets.QFileIconProvider().icon(QtWidgets.QFileIconProvider.File))
+                item.setData(0, QtCore.Qt.UserRole, _path)
+                item.setData(1, QtCore.Qt.UserRole, zippath)
+                
+                parent_item.addChild(item)
+            else:
+                item = QtWidgets.QTreeWidgetItem([folder, "a"])
+                item.setIcon(0, QtWidgets.QFileIconProvider().icon(QtWidgets.QFileIconProvider.Folder))
+                item.setData(0, QtCore.Qt.UserRole, _path)
+                item.setData(1, QtCore.Qt.UserRole, zippath)
+                
+                parent_item.addChild(item)
+                self.populate_tree_widget(child_dict[0], item, zippath)
+
+
+    def build_directory_structure(self, file_list):
+        directory_structure = {}
+        for file_path in file_list:
+            parts = file_path.split('/')
+            current_level = directory_structure                         # Use a separate variable for traversal
+            path = []
+            for key, part in enumerate(parts):
+                if part != "":
+                    if key-1 != -1:
+                        path.append(parts[key-1])
+                    else:
+                        path.append("__root__")
+                    if part not in current_level:
+                        current_level[part] = [{}, path.copy()]         # list is a mutuable object. Need to pass the copy of it to have it work properly
+                    current_level = current_level[part][0]              # Move down one level
+        return directory_structure
+    
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        item = self.itemAt(event.pos())
+        if item:
+            self.startDrag(event, item)
+ 
+    def startDrag(self, event, item):
+        self.drag = QtGui.QDrag(self)
+        pixmap = item.icon(0).pixmap(item.icon(0).actualSize(QtCore.QSize(64, 64)))     # Get the pixmap from the item's icon
+        self.drag.setPixmap(pixmap)                                                     # Set the pixmap for visual representation of dragged item
+        mime_data = QtCore.QMimeData()
+
+        data_sharing = {}
+        data_sharing["zippath"] = item.data(1, QtCore.Qt.UserRole)
+        data_sharing["member"] = item.data(0, QtCore.Qt.UserRole)
+
+        mime_data.setText(json.dumps(data_sharing))                                                     # Set the text to be dragged
+        self.drag.setMimeData(mime_data)
+        self.drag.exec_(QtCore.Qt.MoveAction)
+        
